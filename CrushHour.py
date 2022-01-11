@@ -23,11 +23,10 @@ import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
 prop = FontProperties(fname='/System/Library/Fonts/Apple Color Emoji.ttc')
 plt.rcParams['font.family'] = prop.get_family()
-import plotly.figure_factory as ff
 import plotly.express as px
 from plotly.subplots import make_subplots
 
-# Creating a color palette to customize the charts
+# Creating a color palette to customize the charts color
 color_palette = ["#fe3c72", "#FD267A", "#F54C27", "#FF7854", "#F8A84C", "#303742", "#667180"]
 
 # Streamlit
@@ -145,13 +144,15 @@ def plot_annual_usage(df):
                        path=["date", "swipe_type", "match_result"],
                        values="value",
                        color_discrete_sequence=color_palette)
-    st.subheader(":calendar: Annual Stats - Swipes & Matches")
-    st.write("From "+str(y1_usg)+" to "+str(y2_usg)+", you had swiped right on "+str(total_swipes)+" profiles with " +str(total_matches)+" matches.")
-    st.write(":heart: Match Rate: "+str(total_matches/total_matches)+"%")
-    st.plotly_chart(fig1, use_container_width=True)
-    return fig1
+    col1, col2 = st.columns([3, 1])
+    col1.subheader(":calendar: Swipes & Matches : Annual Stats")
+    col1.plotly_chart(fig1, use_container_width=True)
+    col2.subheader("KEY INDICATORS")
+    col2.write("From "+str(y1_usg)+" to "+str(y2_usg)+", you had swiped right on "+str(total_swipes)+" profiles with " +str(total_matches)+" matches.")
+    col2.write(":cupid: Avg Swipe Right Rate: " + str(round((total_likes / total_swipes) * 100,2)) + "%")
+    col2.write(":revolving_hearts: Avg Match Rate: "+str(round((total_matches/total_likes)*100,2))+"%")
 
-def plot_total_usage(df):
+def plot_daily_usage(df):
     fig2 = px.line(df,
                    x=df.columns[0],
                    y=df.columns[1:8],
@@ -164,9 +165,8 @@ def plot_total_usage(df):
                 dict(count=1, label="YTD", step="year", stepmode="todate"),
                 dict(count=1, label="1y", step="year", stepmode="backward"),
                 dict(step="all")])))
-    st.subheader(":date: Daily Stats - Swipes & Matches Details")
+    st.subheader(":date: Swipes & Matches : Daily Stats")
     st.plotly_chart(fig2, use_container_width=True)
-    return fig2
 
 def plot_total_msg(df):
     fig3 = px.scatter(df,
@@ -177,7 +177,6 @@ def plot_total_msg(df):
                       color_discrete_sequence=color_palette)
     st.subheader(":inbox_tray: Messages Sent vs Received")
     st.plotly_chart(fig3, use_container_width=True)
-    return fig3
 
 # Creating some subplots on the number and the length of messages sent
 def plot_match_hist(df):
@@ -212,7 +211,9 @@ def plot_msg_hist(df):
                                          "Number of sent messages by day of week",
                                          "Number of sent messages by hour"],
                          column_titles=[""],)
-    subplot1 = px.histogram(df, x="sent_month", color_discrete_sequence=color_palette)
+    subplot1 = px.histogram(df, x="sent_month",
+                            color_discrete_sequence=color_palette,
+                            category_orders={"sent_month": ["Jan", "Feb", "Mar", "May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]})
     subplot2 = px.histogram(df, x="sent_day",color_discrete_sequence=color_palette)
     subplot3 = px.histogram(df, x="sent_weekday",color_discrete_sequence=color_palette)
     subplot4 = px.histogram(df, x="sent_hour",color_discrete_sequence=color_palette)
@@ -226,9 +227,13 @@ def plot_msg_hist(df):
 
 # Creating a wordcloud
 def plot_wordcloud(txt):
-    wordcloud = WordCloud().generate(txt)
     st.subheader(":paperclip: Most Used Words in My Messages")
     st.write("According to the data you uploaded, these are the most frequently used words in messages you've sent.")
+    num_words = st.selectbox("Select the maximum number of words to be displayed",[50, 100, 150, 200])
+    wordcloud = WordCloud(width = 1400,
+                          height = 900,
+                          max_words=num_words,
+                          background_color = "white").generate(txt)
     plt.imshow(wordcloud, interpolation='bilinear')
     plt.axis("off")
     plt.show()
@@ -242,13 +247,6 @@ def plot_emoji(df):
     st.write("According to the data you uploaded, these are the most frequently used emojis in messages you've sent.")
     st.plotly_chart(fig8, use_container_width=True)
     return fig8
-
-# Create an app using Streamlit
-st.set_page_config(layout="wide")
-st.set_option('deprecation.showPyplotGlobalUse', False)
-st.title(":fire: CrushHour")
-st.markdown("Welcome to CrushHour, your personal Tinder dashboard")
-st.sidebar.title("Menu")
 
 def year_select(df, columnDate):
     df["year"] = pd.to_datetime(df[columnDate]).dt.year
@@ -265,21 +263,37 @@ def year_select(df, columnDate):
     return first_year, last_year, df
 
 def year_summary(df):
-    total_swipes = df["swipes_likes"].sum()
+    total_swipes = df["swipes_likes"].sum() + df["swipes_passes"].sum() + df["superlikes"].sum()
+    total_likes = df["swipes_likes"].sum() + df["superlikes"].sum()
     total_matches = df["matches"].sum()
-    return total_swipes, total_matches
+    return total_swipes, total_likes, total_matches
+
+# Create an app using Streamlit
+st.set_page_config(page_title="CrushHour - Your Personal Tinder Dashboard",
+                   page_icon="🔥",
+                   layout="wide")
+st.set_option('deprecation.showPyplotGlobalUse', False)
+st.title(":fire: CrushHour")
+st.markdown("Welcome to CrushHour, your personal Tinder dashboard")
+st.sidebar.title(":eyes: About")
+st.sidebar.markdown("Developed by Jiayue LIU")
+st.sidebar.markdown(":mortar_board: MSc Data Management, PSB")
+st.sidebar.markdown(":round_pushpin: Paris, France")
+st.sidebar.markdown(":link: View source code on [GitHub](https://github.com/liu-jiayue/CrushHour)")
+st.sidebar.title(":file_folder: File Uploader")
+st.sidebar.markdown("You can request and download your Tinder data from [here](https://account.gotinder.com/data)")
 
 # Create a file uploader so that users can upload their Tinder data
 uploaded_file = st.sidebar.file_uploader("To begin with, please choose a dataset in .json format downloaded from Tinder")
 if uploaded_file is not None:
-    with st.success('Your file has been uploaded successfully!'):
+    with st.sidebar.success('Your file has been uploaded successfully!'):
         raw_data = json.load(uploaded_file)
     with st.spinner('Please wait, your data is being processed...'):
         usage, messages = read_data(raw_data)
-    st.sidebar.title("Data Selection Sliders")
+    st.sidebar.title(":white_check_mark: Data Selection")
     st.sidebar.markdown("Please select...")
     y1_usg, y2_usg, usage = year_select(usage, "date")
-    total_swipes, total_matches = year_summary(usage)
+    total_swipes, total_likes, total_matches = year_summary(usage)
     y1_msg, y2_msg, messages = year_select(messages, "sent_date")
     annual_usage = df_usage()
     matches = df_matches()
@@ -287,12 +301,12 @@ if uploaded_file is not None:
     list_msg, new_corpus = create_corpus()
     df_emoji = emoji_summary()
     with st.spinner('Please wait, your data is being plotted...'):
-        fig1 = plot_annual_usage(annual_usage)
-        fig2 = plot_total_usage(usage)
-        fig3 = plot_total_msg(usage)
-        fig4 = plot_match_hist(matches)
-        fig6 = plot_msg_hist(msg_time)
-        wordcloud = plot_wordcloud(new_corpus)
-        fig8 = plot_emoji(df_emoji)
+        plot_annual_usage(annual_usage)
+        plot_daily_usage(usage)
+        plot_total_msg(usage)
+        plot_match_hist(matches)
+        plot_msg_hist(msg_time)
+        plot_wordcloud(new_corpus)
+        plot_emoji(df_emoji)
 else:
-    st.write(":exclamation: File not uploaded yet.")
+    st.sidebar.write(":warning: File not uploaded yet.")
